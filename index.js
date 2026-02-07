@@ -64,17 +64,26 @@ const getCommitsByDate = async (dateStr) => {
     .map((commit) => commit.hash);
 };
 
-// Function to find commits by date range
-const getCommitsByRange = async (startDateStr, endDateStr) => {
+// Function to find commits by date range with exclusions
+const getCommitsByRange = async (
+  startDateStr,
+  endDateStr,
+  excludeDates = [],
+) => {
   const git = simpleGit();
   const log = await git.log();
   const start = moment(startDateStr);
   const end = moment(endDateStr);
+  const excludes = excludeDates.map((d) => moment(d).format("YYYY-MM-DD"));
 
   return log.all
     .filter((commit) => {
       const commitDate = moment(commit.date);
-      return commitDate.isBetween(start, end, "day", "[]");
+      const dateStr = commitDate.format("YYYY-MM-DD");
+      return (
+        commitDate.isBetween(start, end, "day", "[]") &&
+        !excludes.includes(dateStr)
+      );
     })
     .map((commit) => commit.hash);
 };
@@ -172,8 +181,18 @@ const args = process.argv.slice(2);
     const index = args.indexOf("--delete-range");
     const start = args[index + 1];
     const end = args[index + 2];
+
+    // simple arg parsing for optional exclude
+    let excludeDates = [];
+    if (args.includes("--exclude-date")) {
+      const exIndex = args.indexOf("--exclude-date");
+      if (args[exIndex + 1]) {
+        excludeDates = args[exIndex + 1].split(",");
+      }
+    }
+
     if (start && end) {
-      const hashes = await getCommitsByRange(start, end);
+      const hashes = await getCommitsByRange(start, end, excludeDates);
       await deleteCommitsByHashes(hashes);
     } else {
       console.error("Please specify start and end dates (YYYY-MM-DD)");
