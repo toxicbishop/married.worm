@@ -9,15 +9,6 @@ const TEMP_FILE_PATH = path.join(__dirname, ".commits_to_delete.json");
 
 // Helper function to get a random integer between min and max (inclusive)
 const getRandomInt = (min, max) => {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-};
-
-const makeCommit = (n) => {
-  if (n === 0) return simpleGit().push();
-
-  const x = getRandomInt(0, 51);
-  const y = getRandomInt(0, 6);
-
   const DATE = moment()
     .subtract(1, "y")
     .add(1, "d")
@@ -117,7 +108,10 @@ const deleteCommitsByHashes = async (hashes) => {
     console.log("Starting interactive rebase...");
     // We use --root to ensure we can reach any commit.
     // WARNING: This might be slow on huge repos.
-    await git.env(env).rebase(["-i", "--root"]);
+    // Added -Xtheirs to automatically resolve conflicts by taking the incoming change (the one being applied)
+    // This is crucial because data.json is often rewritten.
+    // Added --autostash to handle dirty working directory automatically
+    await git.env(env).rebase(["-i", "--root", "-Xtheirs", "--autostash"]);
 
     await git.push(["origin", "+HEAD"]);
     console.log("Successfully deleted specific commits and force pushed.");
