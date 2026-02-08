@@ -45,7 +45,7 @@ const deleteCommits = async (n) => {
 // Function to find commits by date
 const getCommitsByDate = async (dateStr) => {
   const git = simpleGit();
-  const log = await git.log();
+  const log = await git.log(["-n", "20000"]);
   const targetDate = moment(dateStr).format("YYYY-MM-DD");
 
   return log.all
@@ -62,19 +62,23 @@ const getCommitsByRange = async (
   excludeDates = [],
 ) => {
   const git = simpleGit();
-  const log = await git.log();
-  const start = moment(startDateStr);
-  const end = moment(endDateStr);
+  const log = await git.log(["-n", "20000"]);
+  const start = moment(startDateStr).startOf("day");
+  const end = moment(endDateStr).endOf("day");
   const excludes = excludeDates.map((d) => moment(d).format("YYYY-MM-DD"));
+
+  // Debug logging
+  if (log.all.length > 0) {
+    console.log("Sample commit date from git log:", log.all[0].date);
+    console.log("Total commits fetched:", log.all.length);
+  }
 
   return log.all
     .filter((commit) => {
       const commitDate = moment(commit.date);
       const dateStr = commitDate.format("YYYY-MM-DD");
-      return (
-        commitDate.isBetween(start, end, "day", "[]") &&
-        !excludes.includes(dateStr)
-      );
+      const inRange = commitDate.isBetween(start, end, null, "[]");
+      return inRange && !excludes.includes(dateStr);
     })
     .map((commit) => commit.hash);
 };
